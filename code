@@ -1,0 +1,140 @@
+import dash
+from dash import dcc, html, Input, Output
+import pandas as pd
+import plotly.express as px
+
+# Load the data
+file_path = "Wildlife_Conservation_India_Large_Dashboard.xlsx"
+pie_data = pd.read_excel(file_path, sheet_name="Pie Chart Data")
+bar_data = pd.read_excel(file_path, sheet_name="Bar Graph Data")
+line_data = pd.read_excel(file_path, sheet_name="Line Graph Data")
+heatmap_data = pd.read_excel(file_path, sheet_name="Heatmap Data")
+
+# App initialization
+app = dash.Dash(__name__)
+app.title = "Wildlife Conservation Dashboard"
+
+# Layout
+app.layout = html.Div(
+    style={"backgroundColor": "#f9f9f9", "fontFamily": "Arial, sans-serif"},
+    children=[
+        # Header
+        html.Div(
+            style={
+                "backgroundColor": "#4CAF50",
+                "color": "white",
+                "padding": "10px",
+                "textAlign": "center",
+            },
+            children=[
+                html.H1("Wildlife Conservation Dashboard"),
+                html.P("Track and analyze wildlife population trends over time."),
+            ],
+        ),
+
+        # Filters
+        html.Div(
+            style={"padding": "20px"},
+            children=[
+                html.H4("Filter Options", style={"marginBottom": "10px"}),
+                html.Div(
+                    style={"display": "flex", "justifyContent": "space-between", "marginBottom": "20px"},
+                    children=[
+                        # Dropdown for year selection
+                        html.Div(
+                            children=[
+                                html.Label("Select Timeline (Year):"),
+                                dcc.Dropdown(
+                                    id="year-selector",
+                                    options=[
+                                        {"label": str(year), "value": year} for year in sorted(line_data["Year"].unique())
+                                    ],
+                                    multi=True,
+                                    placeholder="Select Year(s)",
+                                    value=[2023],
+                                ),
+                            ],
+                            style={"width": "45%"},
+                        ),
+                        # Dropdown for species selection
+                        html.Div(
+                            children=[
+                                html.Label("Select Species:"),
+                                dcc.Dropdown(
+                                    id="species-selector",
+                                    options=[
+                                        {"label": species, "value": species} for species in sorted(line_data["Species"].unique())
+                                    ],
+                                    multi=True,
+                                    placeholder="Select Species",
+                                    value=["Bengal Tiger"],
+                                ),
+                            ],
+                            style={"width": "45%"},
+                        ),
+                    ],
+                ),
+            ],
+        ),
+
+        # Line Graph
+        html.Div(
+            style={"padding": "20px"},
+            children=[
+                html.H4("Flagship Species Population Over Years", style={"textAlign": "center"}),
+                dcc.Graph(id="line-chart"),
+            ],
+        ),
+
+        # Bar Chart
+        html.Div(
+            style={"padding": "20px"},
+            children=[
+                html.H4("Endangered Species Population Trends", style={"textAlign": "center"}),
+                dcc.Graph(id="bar-chart"),
+            ],
+        ),
+    ],
+)
+
+# Callbacks for interactivity
+@app.callback(
+    Output("line-chart", "figure"),
+    Output("bar-chart", "figure"),
+    Input("year-selector", "value"),
+    Input("species-selector", "value"),
+)
+def update_charts(selected_years, selected_species):
+    # Filter line data
+    filtered_line_data = line_data[
+        (line_data["Year"].isin(selected_years)) & (line_data["Species"].isin(selected_species))
+    ]
+
+    # Line Chart
+    line_fig = px.line(
+        filtered_line_data,
+        x="Year",
+        y="Population",
+        color="Species",
+        title="Population Growth Trends",
+        template="plotly_white",
+    )
+
+    # Filter bar data
+    filtered_bar_data = bar_data[bar_data["Species"].isin(selected_species)]
+    bar_fig = px.bar(
+        filtered_bar_data,
+        x="Species",
+        y="Population",
+        color="Year",
+        barmode="group",
+        title="Population Trends",
+        template="plotly_white",
+    )
+
+    return line_fig, bar_fig
+
+
+# Run the app
+if __name__ == "__main__":
+app.run_server(debug=True)
